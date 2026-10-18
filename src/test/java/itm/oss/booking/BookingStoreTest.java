@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -86,12 +87,20 @@ class BookingStoreTest {
     void testTrim() throws IOException {
         Path file = writeCsv(
                 HEADER,
-                "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting  ,  ACTIVE  ");
+                "  1  ,  s2026001  ,  R101  ,  2026-10-02T10:00  ,  2026-10-02T11:00  ,  2 ,      Project meeting  ,  ACTIVE  ");
  
         List<Booking> result = BookingStore.load(file);
 
-        assertEquals(BookingStatus.ACTIVE, result.get(0).getStatus());
+        assertEquals(1, result.size());
+
+        assertEquals(1, result.get(0).getId());
+        assertEquals("s2026001", result.get(0).getUserId());
+        assertEquals("R101", result.get(0).getRoomId());
+        assertEquals(LocalDateTime.parse("2026-10-02T10:00"), result.get(0).getStart());
+        assertEquals(LocalDateTime.parse("2026-10-02T11:00"), result.get(0).getEnd());
+        assertEquals(2, result.get(0).getAttendees());
         assertEquals("Project meeting", result.get(0).getPurpose());
+        assertEquals(BookingStatus.ACTIVE, result.get(0).getStatus());
     }
 
     @Test 
@@ -101,6 +110,7 @@ class BookingStoreTest {
                 HEADER,
                 "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE",
                 "",
+                "          ",
                 "3,s2026003,R103,2026-10-03T09:00,2026-10-03T10:00,4,Study,CANCELLED");
  
         List<Booking> result = BookingStore.load(file);
@@ -111,23 +121,42 @@ class BookingStoreTest {
     }
 
     @Test 
+    @DisplayName("Only Header or not")
+    void testAboutHeader() throws IOException{
+        Path file = writeCsv(HEADER);
+        List<Booking> result = BookingStore.load(file);
+
+        assertTrue(result.isEmpty());
+
+        file = writeCsv("1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE");
+        result = BookingStore.load(file);
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
+    }
+
+    @Test 
     @DisplayName("Malformed row with wrong column count test")
     void testMalformedWithColumnCount() {
         String validRow     = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
-        String malformedRow = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE,aa";
+        String malformedRow1 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE,aa";
+        String malformedRow2 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting";
 
         assertNotNull(BookingStore.parseBooking(validRow));
-        assertNull(BookingStore.parseBooking(malformedRow));
+        assertNull(BookingStore.parseBooking(malformedRow1));
+        assertNull(BookingStore.parseBooking(malformedRow2));
     }
 
     @Test 
     @DisplayName("Malformed row with invalid id test")
     void testMalformedWithInvalidId() {
-        String validRow     = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
-        String malformedRow = "a,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
+        String validRow      = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
+        String malformedRow1 = "a,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
+        String malformedRow2 = "-1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
 
         assertNotNull(BookingStore.parseBooking(validRow));
-        assertNull(BookingStore.parseBooking(malformedRow));
+        assertNull(BookingStore.parseBooking(malformedRow1));
+        assertEquals(-1, BookingStore.parseBooking(malformedRow2).getId());
     }
 
     @Test 
@@ -144,10 +173,12 @@ class BookingStoreTest {
     @DisplayName("Malformed row with invalid date test")
     void testMalformedWithInvalidDate() {
         String validRow     = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
-        String malformedRow = "1,s2026001,R101,aaaaaaaaaaaaaaaa,2026-10-02T11:00,2,Project meeting,ACTIVE";
+        String malformedRow1 = "1,s2026001,R101,aaaaaaaaaaaaaaaa,2026-10-02T11:00,2,Project meeting,ACTIVE";
+        String malformedRow2 = "1,s2026001,R101,2026-10-02T10:00,aaaaaaaaaaaaaaaa,2,Project meeting,ACTIVE";
 
         assertNotNull(BookingStore.parseBooking(validRow));
-        assertNull(BookingStore.parseBooking(malformedRow));
+        assertNull(BookingStore.parseBooking(malformedRow1));
+        assertNull(BookingStore.parseBooking(malformedRow2));
     }
 
     @Test 
@@ -185,10 +216,40 @@ class BookingStoreTest {
     void testMalformedWithErrorCondition() {
         String validRow      = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE";
         String malformedRow1 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T10:00,2,Project meeting,ACTIVE";
-        String malformedRow2 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,-1,Project meeting,ACTIVE";
+        String malformedRow2 = "1,s2026001,R101,2026-10-02T11:00,2026-10-02T10:00,2,Project meeting,ACTIVE";
+        String malformedRow3 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,-1,Project meeting,ACTIVE";
+        String malformedRow4 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,0,Project meeting,ACTIVE";
 
         assertNotNull(BookingStore.parseBooking(validRow));
         assertNull(BookingStore.parseBooking(malformedRow1));
         assertNull(BookingStore.parseBooking(malformedRow2));
+        assertNull(BookingStore.parseBooking(malformedRow3));
+        assertNull(BookingStore.parseBooking(malformedRow4));
+    }
+
+    @Test 
+    @DisplayName("Lowercase Test")
+    void testLowercase(){
+        String row1 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,acTive";
+        Booking booking1 = BookingStore.parseBooking(row1);
+        String row2 = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,cancellED";
+        Booking booking2 = BookingStore.parseBooking(row2);
+
+        assertNotNull(booking1);
+        assertNotNull(booking2);
+
+        assertEquals(BookingStatus.ACTIVE, booking1.getStatus());
+        assertEquals(BookingStatus.CANCELLED, booking2.getStatus());
+    }
+
+    @Test 
+    @DisplayName("Empty purpose test")
+    void testEmptyPurpose(){
+        String row = "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,,ACTIVE";
+        Booking booking = BookingStore.parseBooking(row);
+
+        assertNotNull(booking);
+
+        assertEquals("", booking.getPurpose());
     }
 }

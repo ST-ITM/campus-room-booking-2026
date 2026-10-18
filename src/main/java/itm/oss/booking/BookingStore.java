@@ -94,8 +94,8 @@ public final class BookingStore {
 
         
         String[] userInfo = row.split(",", -1);
-        for(int i = 0; i < numOfCol; i++) {userInfo[i] = userInfo[i].trim();}
         if(userInfo.length != numOfCol) {return null;}
+        for(int i = 0; i < numOfCol; i++) {userInfo[i] = userInfo[i].trim();}
         
                 
         int bookingID;
