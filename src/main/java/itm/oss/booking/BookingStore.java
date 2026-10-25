@@ -134,7 +134,7 @@ public final class BookingStore {
             return null;
         }
 
-        String stat = userInfo[7].toLowerCase();
+        String stat = userInfo[7].toLowerCase(Locale.ROOT);
 
         if(!stat.equals("active") && !stat.equals("cancelled")) {
             return null;
