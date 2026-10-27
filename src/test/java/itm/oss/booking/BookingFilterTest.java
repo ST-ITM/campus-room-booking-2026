@@ -56,9 +56,11 @@ class BookingFilterTest {
 
     @Test
     void filtersByMinimumAttendees() {
-        List<Booking> result = BookingFilter.filter(bookings, null, null, null, 5);
+        // No booking has exactly 3 attendees, so the equality case is left to
+        // includesBookingWhoseAttendeesEqualMinimum
+        List<Booking> result = BookingFilter.filter(bookings, null, null, null, 3);
 
-        assertEquals(List.of(b2, b4), result);
+        assertEquals(List.of(b2, b3, b4), result);
     }
 
     @Test
@@ -88,6 +90,19 @@ class BookingFilterTest {
         List<Booking> result = BookingFilter.filter(bookings, "  s1 ", " R101  ", null, null);
 
         assertEquals(List.of(b1), result);
+    }
+
+    @Test
+    void matchesWholeIdsNotPrefixes() {
+        // "s1" and "R101" are prefixes of "s10" and "R1010", so a partial match
+        // such as startsWith or contains would wrongly include this booking
+        Booking similar = booking(5, "s10", "R1010", 3, BookingStatus.ACTIVE);
+        List<Booking> withSimilarIds = List.of(b1, similar);
+
+        assertEquals(List.of(b1),
+                BookingFilter.filter(withSimilarIds, "s1", null, null, null));
+        assertEquals(List.of(b1),
+                BookingFilter.filter(withSimilarIds, null, "R101", null, null));
     }
 
     @Test
