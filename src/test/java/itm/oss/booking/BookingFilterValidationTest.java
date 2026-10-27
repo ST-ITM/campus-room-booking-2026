@@ -46,26 +46,18 @@ class BookingFilterValidationTest {
     }
 
     @Test
-    void emptyUserIdIsNotApplied() {
-        List<Booking> result = BookingFilter.filter(bookings, "", null, null, null);
+    void blankStringCriteriaAreNotApplied() {
+        String[] blanks = {"", "   ", "\t", " \t "};
 
-        assertEquals(List.of(b1, b2, b3), result);
-    }
-
-    @Test
-    void whitespaceOnlyUserIdIsNotApplied() {
-        List<Booking> result = BookingFilter.filter(bookings, "   ", null, null, null);
-
-        assertEquals(List.of(b1, b2, b3), result);
-    }
-
-    @Test
-    void blankRoomIdIsNotApplied() {
-        List<Booking> emptyResult = BookingFilter.filter(bookings, null, "", null, null);
-        List<Booking> whitespaceResult = BookingFilter.filter(bookings, null, " \t ", null, null);
-
-        assertEquals(List.of(b1, b2, b3), emptyResult);
-        assertEquals(List.of(b1, b2, b3), whitespaceResult);
+        // Apply the same blank inputs to both fields so they stay consistent
+        for (String blank : blanks) {
+            assertEquals(List.of(b1, b2, b3),
+                    BookingFilter.filter(bookings, blank, null, null, null),
+                    "userId blank: [" + blank + "]");
+            assertEquals(List.of(b1, b2, b3),
+                    BookingFilter.filter(bookings, null, blank, null, null),
+                    "roomId blank: [" + blank + "]");
+        }
     }
 
     @Test
@@ -112,8 +104,11 @@ class BookingFilterValidationTest {
         List<Booking> supplied = new ArrayList<>(bookings);
 
         List<Booking> result = BookingFilter.filter(supplied, null, null, null, null);
-        result.clear();
 
-        assertEquals(3, supplied.size());
+        // Mutate the supplied list instead of the result, so an unmodifiable
+        // result (e.g. from Stream.toList()) is still accepted
+        supplied.clear();
+
+        assertEquals(List.of(b1, b2, b3), result);
     }
 }
