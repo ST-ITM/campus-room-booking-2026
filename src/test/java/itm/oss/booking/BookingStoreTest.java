@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -251,5 +252,26 @@ class BookingStoreTest {
         assertNotNull(booking);
 
         assertEquals("", booking.getPurpose());
+    }
+
+    @Test
+    @DisplayName("Turkish locale regression test")
+    void testTurkishLocale() {
+        Locale original = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+
+            Booking active = BookingStore.parseBooking(
+                "1,s2026001,R101,2026-10-02T10:00,2026-10-02T11:00,2,Project meeting,ACTIVE");
+            Booking cancelled = BookingStore.parseBooking(
+                "2,s2026002,R102,2026-10-03T09:00,2026-10-03T10:00,4,Study,CANCELLED");
+
+            assertNotNull(active);
+            assertNotNull(cancelled);
+            assertEquals(BookingStatus.ACTIVE, active.getStatus());
+            assertEquals(BookingStatus.CANCELLED, cancelled.getStatus());
+        } finally {
+            Locale.setDefault(original);
+        }
     }
 }
